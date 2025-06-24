@@ -56,9 +56,19 @@ app.get('/api/search', async (req, res) => {
         typeof req.query.rollNumber === 'string'
             ? req.query.rollNumber.trim()
             : '';
+    // Add new filters
+    const company =
+        typeof req.query.company === 'string' ? req.query.company.trim() : '';
+    const city =
+        typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const batch =
+        typeof req.query.batch === 'string' ? req.query.batch.trim() : '';
 
     try {
         const orConditions: any[] = [];
+        const andConditions: any[] = [];
+
+        // Handle search parameters
         if (name) {
             orConditions.push({ name: { $regex: new RegExp(name, 'i') } });
         }
@@ -66,12 +76,54 @@ app.get('/api/search', async (req, res) => {
             orConditions.push({ rollNumber });
         }
 
-        if (orConditions.length === 0) {
+        // Filter parameters
+        if (company) {
+            andConditions.push({
+                lastOrganization: { $regex: new RegExp(company, 'i') },
+            });
+        }
+
+        if (city) {
+            const cityRegex = new RegExp(city, 'i');
+            andConditions.push({
+                $or: [
+                    { currentLocationIndia: { $regex: cityRegex } },
+                    { currentOverseasLocation: { $regex: cityRegex } },
+                ],
+            });
+        }
+
+        if (batch) {
+            // Convert batch string to number
+            const batchYear = parseInt(batch);
+            if (!isNaN(batchYear)) {
+                andConditions.push({ yearOfGraduation: batchYear });
+            }
+        }
+
+        // Build the final query
+        let query = {};
+
+        if (orConditions.length > 0) {
+            query = { $or: orConditions };
+        }
+
+        if (andConditions.length > 0) {
+            if (Object.keys(query).length > 0) {
+                // Combine $or and $and conditions
+                query = { $and: [query, ...andConditions] };
+            } else {
+                // Only $and conditions exist
+                query = { $and: andConditions };
+            }
+        }
+
+        // If no search parameters provided, return empty result
+        if (Object.keys(query).length === 0) {
             res.json({ count: 0, data: [] });
             return;
         }
 
-        const query = { $or: orConditions };
         const results = await Alumni.find(query).limit(100);
 
         res.json({ count: results.length, data: results });
