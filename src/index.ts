@@ -546,7 +546,7 @@ async function startServer() {
         await connectWithRetry();
         
         const PORT = parseInt(process.env.PORT || '3001');
-        const server = app.listen(PORT, 'localhost', () => {
+        const server = app.listen(PORT, '0.0.0.0', () => {
             console.log(`Server running on port ${PORT}`);
             console.log(`MongoDB connection state: ${mongoose.connection.readyState}`);
         });
