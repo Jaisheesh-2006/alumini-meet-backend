@@ -1,35 +1,66 @@
 // backend/src/index.ts
-
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
-import nodemailer from 'nodemailer';
-
+// import nodemailer from 'nodemailer';
+import { Resend } from "resend";
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-// Configure email transporter
-const emailUser = process.env.EMAIL_USER || 'your-email@gmail.com';
-const emailPassword = (process.env.EMAIL_APP_PASSWORD || 'your-app-password').replace(/\s/g, ''); // Remove all spaces
-const VOLUNTEER_EMAIL = process.env.VOLUNTEER_EMAIL || 'anuragthakur2102@gmail.com';
+// // Configure email transporter
+// const emailUser = process.env.EMAIL_USER || 'your-email@gmail.com';
+// const emailPassword = (process.env.EMAIL_APP_PASSWORD || 'your-app-password').replace(/\s/g, ''); // Remove all spaces
+// const VOLUNTEER_EMAIL = process.env.VOLUNTEER_EMAIL || 'anuragthakur2102@gmail.com';
 
-console.log('Email Configuration:');
-console.log('  EMAIL_USER:', emailUser);
-console.log('  EMAIL_APP_PASSWORD:', emailPassword ? `✓ Set (${emailPassword.length} chars)` : '✗ NOT SET');
-console.log('  VOLUNTEER_EMAIL:', VOLUNTEER_EMAIL);
+// console.log('Email Configuration:');
+// console.log('  EMAIL_USER:', emailUser);
+// console.log('  EMAIL_APP_PASSWORD:', emailPassword ? `✓ Set (${emailPassword.length} chars)` : '✗ NOT SET');
+// console.log('  VOLUNTEER_EMAIL:', VOLUNTEER_EMAIL);
 
-const emailTransporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: emailUser,
-        pass: emailPassword
+// const emailTransporter = nodemailer.createTransport({
+//     service: 'gmail',
+//     auth: {
+//         user: emailUser,
+//         pass: emailPassword
+//     }
+// });
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+interface EmailParams {
+  to: string;
+  subject: string;
+  html: string;
+}
+
+const sendEmail = async ({ to, subject, html }: EmailParams) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: "Website <onboarding@resend.dev>", // MUST be this for sandbox
+      to: [to],
+      subject,
+      html,
+    });
+
+    // 1. Check for API-level errors (e.g., invalid email, bounced)
+    if (error) {
+      console.error("Resend API Error:", error);
+      return; 
     }
-});
+
+    // 2. Success
+    console.log("Email sent successfully:", data);
+
+  } catch (err) {
+    // 3. Catch unexpected crashes (e.g., network failure)
+    console.error("Unexpected System Error:", err);
+  }
+};
 
 const meetAppDist = path.resolve(__dirname, '../../meet/alumnimeet/dist');
 
@@ -380,14 +411,14 @@ app.post('/api/update-request', async (req, res) => {
                 </p>
             `;
 
-            await emailTransporter.sendMail({
-                from: process.env.EMAIL_USER || 'Alumni Network <noreply@alumni.com>',
-                to: VOLUNTEER_EMAIL,
-                subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
-                html: emailHtml
-            });
-
-            console.log('✓ Email notification sent successfully to', VOLUNTEER_EMAIL);
+            // await emailTransporter.sendMail({
+            //     from: process.env.EMAIL_USER || 'Alumni Network <noreply@alumni.com>',
+            //     to: VOLUNTEER_EMAIL,
+            //     subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
+            //     html: emailHtml
+            // });
+            await sendEmail({to: "jaicodes2006@gmail.com", subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`, html: emailHtml});
+            // console.log('✓ Email notification sent successfully to', VOLUNTEER_EMAIL);
         } catch (emailError: any) {
             console.error('✗ Failed to send email notification');
             console.error('  Error code:', emailError.code);
