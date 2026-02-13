@@ -41,7 +41,7 @@ interface EmailParams {
 const sendEmail = async ({ to, subject, html }: EmailParams) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "info<alumni.iiitm.ac.in>", 
+      from: "Alumni Info <info@alumni.iiitm.ac.in>", 
       to: [to],
       subject,
       html,
