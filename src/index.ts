@@ -41,7 +41,7 @@ interface EmailParams {
 const sendEmail = async ({ to, subject, html }: EmailParams) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Website <onboarding@resend.dev>", // MUST be this for sandbox
+      from: "info<alumni.iiitm.ac.in>", 
       to: [to],
       subject,
       html,
@@ -417,7 +417,7 @@ app.post('/api/update-request', async (req, res) => {
             //     subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
             //     html: emailHtml
             // });
-            await sendEmail({to: "jaicodes2006@gmail.com", subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`, html: emailHtml});
+            await sendEmail({to: "alumninet@iiitm.ac.in", subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`, html: emailHtml});
             // console.log('✓ Email notification sent successfully to', VOLUNTEER_EMAIL);
         } catch (emailError: any) {
             console.error('✗ Failed to send email notification');
