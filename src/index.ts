@@ -1,10 +1,10 @@
 // backend/src/index.ts
-import express from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import dotenv from "dotenv";
+import fs from "fs";
+import path from "path";
 // import nodemailer from 'nodemailer';
 import { Resend } from "resend";
 dotenv.config();
@@ -41,7 +41,7 @@ interface EmailParams {
 const sendEmail = async ({ to, subject, html }: EmailParams) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Alumni Info <info@alumni.iiitm.ac.in>", 
+      from: "Alumni Info <info@alumni.iiitm.ac.in>",
       to: [to],
       subject,
       html,
@@ -50,333 +50,406 @@ const sendEmail = async ({ to, subject, html }: EmailParams) => {
     // 1. Check for API-level errors (e.g., invalid email, bounced)
     if (error) {
       console.error("Resend API Error:", error);
-      return; 
+      return;
     }
 
     // 2. Success
     console.log("Email sent successfully:", data);
-
   } catch (err) {
     // 3. Catch unexpected crashes (e.g., network failure)
     console.error("Unexpected System Error:", err);
   }
 };
 
-const meetAppDist = path.resolve(__dirname, '../../meet/alumnimeet/dist');
+const meetAppDist = path.resolve(__dirname, "../../meet/alumnimeet/dist");
 
 if (fs.existsSync(meetAppDist)) {
-    app.use('/alumnimeet', express.static(meetAppDist));
-    app.get(/^\/alumnimeet(\/.*)?$/, (_req, res) => {
-        res.sendFile(path.join(meetAppDist, 'index.html'));
-    });
+  app.use("/alumnimeet", express.static(meetAppDist));
+  app.get(/^\/alumnimeet(\/.*)?$/, (_req, res) => {
+    res.sendFile(path.join(meetAppDist, "index.html"));
+  });
 } else {
-    console.warn(`Meet app build not found at ${meetAppDist}. Run the meet build before serving /alumnimeet.`);
+  console.warn(
+    `Meet app build not found at ${meetAppDist}. Run the meet build before serving /alumnimeet.`,
+  );
 }
 
 // Define Mongoose schema for Alumni
 const alumniSchema = new mongoose.Schema({
-    name: { type: String, required: true, index: true },
-    rollNumber: { type: String, required: true, unique: true, index: true },
-    gender: String,
-    yearOfEntry: Number,
-    yearOfGraduation: Number,
-    programName: String,
-    specialization: String,
-    department: String,
-    currentLocationIndia: String,
-    currentOverseasLocation: String,
-    lastPosition: String,
-    lastOrganization: String,
-    natureOfJob: String,
-    email: String,
-    phone: String,
-    linkedIn: String,
-    twitter: String,
-    instagram: String,
-    facebook: String,
-    hostels: String,
-    higherStudies: String,
-    startup: String,
-    achievements: String,
-    photoLink: String,
+  name: { type: String, required: true, index: true },
+  rollNumber: { type: String, required: true, unique: true, index: true },
+  gender: String,
+  yearOfEntry: Number,
+  yearOfGraduation: Number,
+  programName: String,
+  specialization: String,
+  department: String,
+  currentLocationIndia: String,
+  currentOverseasLocation: String,
+  lastPosition: String,
+  lastOrganization: String,
+  natureOfJob: String,
+  email: String,
+  phone: String,
+  linkedIn: String,
+  twitter: String,
+  instagram: String,
+  facebook: String,
+  hostels: String,
+  higherStudies: String,
+  startup: String,
+  achievements: String,
+  photoLink: String,
 });
 
 // Create indexes for better query performance
 // Text index for name and rollNumber search
-alumniSchema.index({ name: 'text', rollNumber: 'text' });
+alumniSchema.index({ name: "text", rollNumber: "text" });
 // Compound index for filter operations
 alumniSchema.index({
-    lastOrganization: 1,
-    currentLocationIndia: 1,
-    currentOverseasLocation: 1,
-    yearOfGraduation: 1,
+  lastOrganization: 1,
+  currentLocationIndia: 1,
+  currentOverseasLocation: 1,
+  yearOfGraduation: 1,
 });
 
-const Alumni = mongoose.model('Alumni', alumniSchema);
+const Alumni = mongoose.model("Alumni", alumniSchema);
 
 // Define schema for update requests
 const updateRequestSchema = new mongoose.Schema({
-    rollNumber: { type: String, required: true, index: true },
-    oldData: { type: mongoose.Schema.Types.Mixed, required: true },
-    newData: { type: mongoose.Schema.Types.Mixed, required: true },
-    status: { 
-        type: String, 
-        enum: ['pending', 'approved', 'rejected'], 
-        default: 'pending',
-        index: true 
-    },
-    submittedAt: { type: Date, default: Date.now, index: true },
-    reviewedAt: { type: Date },
-    reviewedBy: { type: String },
-    notes: { type: String }
+  rollNumber: { type: String, required: true, index: true },
+  oldData: { type: mongoose.Schema.Types.Mixed, required: true },
+  newData: { type: mongoose.Schema.Types.Mixed, required: true },
+  status: {
+    type: String,
+    enum: ["pending", "approved", "rejected"],
+    default: "pending",
+    index: true,
+  },
+  submittedAt: { type: Date, default: Date.now, index: true },
+  reviewedAt: { type: Date },
+  reviewedBy: { type: String },
+  notes: { type: String },
 });
 
-const UpdateRequest = mongoose.model('UpdateRequest', updateRequestSchema);
+const UpdateRequest = mongoose.model("UpdateRequest", updateRequestSchema);
 
 // Connect to MongoDB with retry logic
 const MONGO_URL =
-    process.env.MONGO_URL || 'mongodb://localhost:27017/alumni_db';
+  process.env.MONGO_URL || "mongodb://localhost:27017/alumni_db";
 
 let mongoConnected = false;
 
 // Add database name to connection URL if using MongoDB Atlas
 const getConnectionUrl = (url: string): string => {
-    if (url.includes('mongodb+srv://') && !url.match(/\/[^?]+\?/)) {
-        // Insert database name before query parameters
-        return url.replace(/\/\?/, '/alumni_db?');
-    }
-    return url;
+  if (url.includes("mongodb+srv://") && !url.match(/\/[^?]+\?/)) {
+    // Insert database name before query parameters
+    return url.replace(/\/\?/, "/alumni_db?");
+  }
+  return url;
 };
 
 // Connection options with timeouts and pooling
 const mongooseOptions = {
-    serverSelectionTimeoutMS: 10000, // 10 seconds
-    connectTimeoutMS: 10000,
-    socketTimeoutMS: 45000,
-    maxPoolSize: 10,
-    minPoolSize: 2,
+  serverSelectionTimeoutMS: 10000, // 10 seconds
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+  maxPoolSize: 10,
+  minPoolSize: 2,
 };
 
 // Retry connection with exponential backoff
 async function connectWithRetry(retries = 5, delay = 2000): Promise<void> {
-    for (let i = 0; i < retries; i++) {
-        try {
-            // const connectionUrl = getConnectionUrl(MONGO_URL);
-            const connectionUrl=MONGO_URL
-            console.log(MONGO_URL)
-            await mongoose.connect(connectionUrl, mongooseOptions);
-            console.log('MongoDB connected successfully');
-            mongoConnected = true;
-            return;
-        } catch (err) {
-            console.error(`MongoDB connection attempt ${i + 1} failed:`, err);
-            if (i < retries - 1) {
-                const waitTime = delay * Math.pow(2, i);
-                console.log(`Retrying in ${waitTime}ms...`);
-                await new Promise((resolve) => setTimeout(resolve, waitTime));
-            } else {
-                console.error('MongoDB connection failed after all retries');
-                throw err;
-            }
-        }
+  for (let i = 0; i < retries; i++) {
+    try {
+      // const connectionUrl = getConnectionUrl(MONGO_URL);
+      const connectionUrl = MONGO_URL;
+      console.log(MONGO_URL);
+      await mongoose.connect(connectionUrl, mongooseOptions);
+      console.log("MongoDB connected successfully");
+      mongoConnected = true;
+      return;
+    } catch (err) {
+      console.error(`MongoDB connection attempt ${i + 1} failed:`, err);
+      if (i < retries - 1) {
+        const waitTime = delay * Math.pow(2, i);
+        console.log(`Retrying in ${waitTime}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, waitTime));
+      } else {
+        console.error("MongoDB connection failed after all retries");
+        throw err;
+      }
     }
+  }
 }
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-    const isConnected = mongoose.connection.readyState === 1;
-    res.json({ 
-        status: isConnected ? 'ok' : 'degraded', 
-        mongoConnected: isConnected,
-        connectionState: mongoose.connection.readyState 
-    });
+app.get("/api/health", (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.json({
+    status: isConnected ? "ok" : "degraded",
+    mongoConnected: isConnected,
+    connectionState: mongoose.connection.readyState,
+  });
 });
 
 // Sanitize input to prevent injection attacks
 function sanitizeInput(input: string): string {
-    return input.trim().replace(/["\\"]/g, '\\$&');
+  return input.trim().replace(/["\\"]/g, "\\$&");
+}
+
+function escapeRegex(input: string): string {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // search endpoint -->
-app.get('/api/search', async (req, res) => {
-    const name =
-        typeof req.query.name === 'string' ? req.query.name.trim() : '';
-    const rollNumber =
-        typeof req.query.rollNumber === 'string'
-            ? req.query.rollNumber.trim()
-            : '';
-    // Add new filters
-    const company =
-        typeof req.query.company === 'string' ? req.query.company.trim() : '';
-    const city =
-        typeof req.query.city === 'string' ? req.query.city.trim() : '';
-    const batch =
-        typeof req.query.batch === 'string' ? req.query.batch.trim() : '';
-    // Pagination parameters
-    const page = Math.max(1, parseInt(req.query.page as string) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20)); // Max 50 results per page
+app.get("/api/search", async (req, res) => {
+  const name = typeof req.query.name === "string" ? req.query.name.trim() : "";
+  const rollNumber =
+    typeof req.query.rollNumber === "string" ? req.query.rollNumber.trim() : "";
+  // Add new filters
+  const company =
+    typeof req.query.company === "string" ? req.query.company.trim() : "";
+  const natureOfJob =
+    typeof req.query.natureOfJob === "string"
+      ? req.query.natureOfJob.trim()
+      : "";
+  const country =
+    typeof req.query.country === "string" ? req.query.country.trim() : "";
+  const city = typeof req.query.city === "string" ? req.query.city.trim() : "";
+  const yearOfEntry =
+    typeof req.query.yearOfEntry === "string"
+      ? req.query.yearOfEntry.trim()
+      : "";
+  const programName =
+    typeof req.query.programName === "string"
+      ? req.query.programName.trim()
+      : "";
+  const specialization =
+    typeof req.query.specialization === "string"
+      ? req.query.specialization.trim()
+      : "";
+  // Pagination parameters
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(
+    50,
+    Math.max(1, parseInt(req.query.limit as string) || 20),
+  ); // Max 50 results per page
 
-    try {
-        const andConditions: any[] = [];
+  try {
+    const andConditions: any[] = [];
 
-        // Handle text search for name or rollNumber using text index (much faster)
-        if (name || rollNumber) {
-            const searchTerms = [];
-            if (name) searchTerms.push(sanitizeInput(name));
-            if (rollNumber) searchTerms.push(sanitizeInput(rollNumber));
-            
-            andConditions.push({
-                $text: { $search: searchTerms.join(' ') },
-            });
-        }
+    // Handle partial matches for name and roll number
+    if (name || rollNumber) {
+      const searchConditions: any[] = [];
 
-        // Filter parameters (uses compound index)
-        if (company) {
-            const sanitizedCompany = sanitizeInput(company);
-            andConditions.push({
-                lastOrganization: {
-                    $regex: sanitizedCompany,
-                    $options: 'i',
-                },
-            });
-        }
-
-        if (city) {
-            const sanitizedCity = sanitizeInput(city);
-            andConditions.push({
-                $or: [
-                    {
-                        currentLocationIndia: {
-                            $regex: sanitizedCity,
-                            $options: 'i',
-                        },
-                    },
-                    {
-                        currentOverseasLocation: {
-                            $regex: sanitizedCity,
-                            $options: 'i',
-                        },
-                    },
-                ],
-            });
-        }
-
-        if (batch) {
-            // Convert batch string to number
-            const batchYear = parseInt(batch);
-            if (!isNaN(batchYear)) {
-                andConditions.push({ yearOfGraduation: batchYear });
-            }
-        }
-
-        // Build the final query
-        const query =
-            andConditions.length > 0 ? { $and: andConditions } : {};
-
-        // If no search parameters provided, return empty result
-        if (Object.keys(query).length === 0) {
-            res.json({ count: 0, data: [], page, limit, hasMore: false });
-            return;
-        }
-
-        // Calculate skip for pagination
-        const skip = (page - 1) * limit;
-
-        // Project only needed fields to reduce payload size
-        const hasTextSearch = name || rollNumber;
-        const projection: any = {
-            name: 1,
-            rollNumber: 1,
-            department: 1,
-            yearOfGraduation: 1,
-            lastOrganization: 1,
-            currentLocationIndia: 1,
-            currentOverseasLocation: 1,
-        };
-        
-        // Include text search score only if doing text search
-        if (hasTextSearch) {
-            projection.score = { $meta: 'textScore' };
-        }
-
-        // Execute query with pagination and projection, sorted by text relevance
-        let queryBuilder = Alumni.find(query).select(projection);
-        
-        // If text search was used, sort by relevance score
-        if (hasTextSearch) {
-            queryBuilder = queryBuilder.sort({ score: { $meta: 'textScore' } });
-        }
-
-        const results = await queryBuilder.skip(skip).limit(limit);
-
-        // Get total count for pagination metadata
-        const totalCount = await Alumni.countDocuments(query);
-        const hasMore = skip + results.length < totalCount;
-
-        // Remove score field before sending to frontend (if it exists)
-        const cleanedResults = results.map((doc) => {
-            const obj = doc.toObject() as any;
-            if (obj.score) {
-                delete obj.score;
-            }
-            return obj;
+      if (name) {
+        const sanitizedName = escapeRegex(sanitizeInput(name));
+        searchConditions.push({
+          name: {
+            $regex: sanitizedName,
+            $options: "i",
+          },
         });
+      }
 
-        res.json({
-            count: cleanedResults.length,
-            data: cleanedResults,
-            page,
-            limit,
-            totalCount,
-            hasMore,
+      if (rollNumber) {
+        const sanitizedRoll = escapeRegex(sanitizeInput(rollNumber));
+        searchConditions.push({
+          rollNumber: {
+            $regex: sanitizedRoll,
+            $options: "i",
+          },
         });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+      }
+
+      andConditions.push(...searchConditions);
     }
+
+    // Fuzzy company search
+    if (company) {
+      const sanitizedCompany = escapeRegex(sanitizeInput(company));
+      andConditions.push({
+        lastOrganization: {
+          $regex: sanitizedCompany,
+          $options: "i",
+        },
+      });
+    }
+
+    if (natureOfJob) {
+      const sanitizedNature = escapeRegex(sanitizeInput(natureOfJob));
+      andConditions.push({
+        natureOfJob: {
+          $regex: `^${sanitizedNature}$`,
+          $options: "i",
+        },
+      });
+    }
+
+    if (country) {
+      const sanitizedCountry = escapeRegex(sanitizeInput(country));
+      andConditions.push({
+        $or: [
+          {
+            currentLocationIndia: {
+              $regex: sanitizedCountry,
+              $options: "i",
+            },
+          },
+          {
+            currentOverseasLocation: {
+              $regex: sanitizedCountry,
+              $options: "i",
+            },
+          },
+        ],
+      });
+    }
+
+    if (city) {
+      const sanitizedCity = escapeRegex(sanitizeInput(city));
+      andConditions.push({
+        $or: [
+          {
+            currentLocationIndia: {
+              $regex: sanitizedCity,
+              $options: "i",
+            },
+          },
+          {
+            currentOverseasLocation: {
+              $regex: sanitizedCity,
+              $options: "i",
+            },
+          },
+        ],
+      });
+    }
+
+    if (yearOfEntry) {
+      const parsedYearOfEntry = parseInt(yearOfEntry);
+      if (!isNaN(parsedYearOfEntry)) {
+        andConditions.push({ yearOfEntry: parsedYearOfEntry });
+      }
+    }
+
+    if (programName) {
+      const sanitizedProgramName = escapeRegex(sanitizeInput(programName));
+      andConditions.push({
+        programName: {
+          $regex: `^${sanitizedProgramName}$`,
+          $options: "i",
+        },
+      });
+    }
+
+    if (specialization) {
+      const sanitizedSpecialization = escapeRegex(
+        sanitizeInput(specialization),
+      );
+      andConditions.push({
+        specialization: {
+          $regex: `^${sanitizedSpecialization}$`,
+          $options: "i",
+        },
+      });
+    }
+
+    // Build the final query
+    const query = andConditions.length > 0 ? { $and: andConditions } : {};
+
+    // If no search parameters provided, return empty result
+    if (Object.keys(query).length === 0) {
+      res.json({ count: 0, data: [], page, limit, hasMore: false });
+      return;
+    }
+
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+
+    // Project only needed fields to reduce payload size
+    const projection: any = {
+      name: 1,
+      rollNumber: 1,
+      department: 1,
+      yearOfEntry: 1,
+      yearOfGraduation: 1,
+      programName: 1,
+      specialization: 1,
+      lastOrganization: 1,
+      currentLocationIndia: 1,
+      currentOverseasLocation: 1,
+    };
+
+    // Execute query with pagination and sorted by oldest year of entry first
+    const results = await Alumni.find(query)
+      .select(projection)
+      .sort({ yearOfEntry: 1, name: 1 })
+      .skip(skip)
+      .limit(limit);
+
+    // Get total count for pagination metadata
+    const totalCount = await Alumni.countDocuments(query);
+    const hasMore = skip + results.length < totalCount;
+
+    const cleanedResults = results.map((doc) => doc.toObject());
+
+    res.json({
+      count: cleanedResults.length,
+      data: cleanedResults,
+      page,
+      limit,
+      totalCount,
+      hasMore,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Submit update request endpoint
-app.post('/api/update-request', async (req, res) => {
+app.post("/api/update-request", async (req, res) => {
+  try {
+    const { rollNumber, oldData, newData } = req.body;
+
+    if (!rollNumber || !oldData || !newData) {
+      res.status(400).json({ error: "Missing required fields" });
+      return;
+    }
+
+    // Verify that the alumni exists
+    const alumni = await Alumni.findOne({ rollNumber });
+    if (!alumni) {
+      res.status(404).json({ error: "Alumni not found" });
+      return;
+    }
+
+    // Create update request
+    const updateRequest = new UpdateRequest({
+      rollNumber,
+      oldData,
+      newData,
+      status: "pending",
+    });
+
+    await updateRequest.save();
+
+    // Send email notification
     try {
-        const { rollNumber, oldData, newData } = req.body;
-
-        if (!rollNumber || !oldData || !newData) {
-            res.status(400).json({ error: 'Missing required fields' });
-            return;
+      const changedFields = [];
+      for (const key in newData) {
+        if (JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])) {
+          changedFields.push({
+            field: key,
+            oldValue: oldData[key] || "N/A",
+            newValue: newData[key] || "N/A",
+          });
         }
+      }
 
-        // Verify that the alumni exists
-        const alumni = await Alumni.findOne({ rollNumber });
-        if (!alumni) {
-            res.status(404).json({ error: 'Alumni not found' });
-            return;
-        }
-
-        // Create update request
-        const updateRequest = new UpdateRequest({
-            rollNumber,
-            oldData,
-            newData,
-            status: 'pending'
-        });
-
-        await updateRequest.save();
-
-        // Send email notification
-        try {
-            const changedFields = [];
-            for (const key in newData) {
-                if (JSON.stringify(oldData[key]) !== JSON.stringify(newData[key])) {
-                    changedFields.push({
-                        field: key,
-                        oldValue: oldData[key] || 'N/A',
-                        newValue: newData[key] || 'N/A'
-                    });
-                }
-            }
-
-            const emailHtml = `
+      const emailHtml = `
                 <h2>New Alumni Update Request</h2>
                 <p><strong>Alumni Name:</strong> ${newData.name || oldData.name}</p>
                 <p><strong>Roll Number:</strong> ${rollNumber}</p>
@@ -393,223 +466,255 @@ app.post('/api/update-request', async (req, res) => {
                         </tr>
                     </thead>
                     <tbody>
-                        ${changedFields.map(change => `
+                        ${changedFields
+                          .map(
+                            (change) => `
                             <tr>
                                 <td><strong>${change.field}</strong></td>
                                 <td style="color: #d32f2f;">${change.oldValue}</td>
                                 <td style="color: #388e3c;">${change.newValue}</td>
                             </tr>
-                        `).join('')}
+                        `,
+                          )
+                          .join("")}
                     </tbody>
                 </table>
                 
                 <p style="margin-top: 20px;">
-                    <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/volunteer-portal-secret" 
+                    <a href="${process.env.FRONTEND_URL || "http://localhost:5173"}/volunteer-portal-secret" 
                        style="background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
                         Review in Volunteer Portal
                     </a>
                 </p>
             `;
 
-            // await emailTransporter.sendMail({
-            //     from: process.env.EMAIL_USER || 'Alumni Network <noreply@alumni.com>',
-            //     to: VOLUNTEER_EMAIL,
-            //     subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
-            //     html: emailHtml
-            // });
-            await sendEmail({to: "alumninet@iiitm.ac.in", subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`, html: emailHtml});
-            // console.log('✓ Email notification sent successfully to', VOLUNTEER_EMAIL);
-        } catch (emailError: any) {
-            console.error('✗ Failed to send email notification');
-            console.error('  Error code:', emailError.code);
-            console.error('  Error message:', emailError.message);
-            console.error('  Full error:', emailError);
-            // Don't fail the request if email fails
-        }
-
-        res.json({ 
-            success: true, 
-            message: 'Update request submitted successfully',
-            requestId: updateRequest._id
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+      // await emailTransporter.sendMail({
+      //     from: process.env.EMAIL_USER || 'Alumni Network <noreply@alumni.com>',
+      //     to: VOLUNTEER_EMAIL,
+      //     subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
+      //     html: emailHtml
+      // });
+      await sendEmail({
+        to: "alumninet@iiitm.ac.in",
+        subject: `Alumni Update Request - ${newData.name || oldData.name} (${rollNumber})`,
+        html: emailHtml,
+      });
+      // console.log('✓ Email notification sent successfully to', VOLUNTEER_EMAIL);
+    } catch (emailError: any) {
+      console.error("✗ Failed to send email notification");
+      console.error("  Error code:", emailError.code);
+      console.error("  Error message:", emailError.message);
+      console.error("  Full error:", emailError);
+      // Don't fail the request if email fails
     }
+
+    res.json({
+      success: true,
+      message: "Update request submitted successfully",
+      requestId: updateRequest._id,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Secret volunteer portal endpoints
-const VOLUNTEER_SECRET = process.env.VOLUNTEER_SECRET || 'change-this-secret-key-in-production';
+const VOLUNTEER_SECRET =
+  process.env.VOLUNTEER_SECRET || "change-this-secret-key-in-production";
 
-console.log('Backend Started - VOLUNTEER_SECRET loaded:', VOLUNTEER_SECRET ? `✓ (${VOLUNTEER_SECRET.length} chars)` : '✗ NOT FOUND');
+console.log(
+  "Backend Started - VOLUNTEER_SECRET loaded:",
+  VOLUNTEER_SECRET ? `✓ (${VOLUNTEER_SECRET.length} chars)` : "✗ NOT FOUND",
+);
 
 // Middleware to verify volunteer access
 const verifyVolunteer = (req: any, res: any, next: any) => {
-    const authHeader = req.headers.authorization;
-    const expectedAuth = `Bearer ${VOLUNTEER_SECRET}`;
-    
-    console.log('Volunteer auth attempt:');
-    console.log('  Received header:', authHeader ? `Bearer ${authHeader.replace('Bearer ', '').substring(0, 5)}...` : 'NONE');
-    console.log('  Expected:', `Bearer ${VOLUNTEER_SECRET.substring(0, 5)}...`);
-    console.log('  Match:', authHeader === expectedAuth ? '✓ YES' : '✗ NO');
-    
-    if (!authHeader || authHeader !== expectedAuth) {
-        console.log('  → Auth FAILED - returning 401');
-        res.status(401).json({ error: 'Unauthorized - Invalid secret key' });
-        return;
-    }
-    console.log('  → Auth SUCCESS');
-    next();
+  const authHeader = req.headers.authorization;
+  const expectedAuth = `Bearer ${VOLUNTEER_SECRET}`;
+
+  console.log("Volunteer auth attempt:");
+  console.log(
+    "  Received header:",
+    authHeader
+      ? `Bearer ${authHeader.replace("Bearer ", "").substring(0, 5)}...`
+      : "NONE",
+  );
+  console.log("  Expected:", `Bearer ${VOLUNTEER_SECRET.substring(0, 5)}...`);
+  console.log("  Match:", authHeader === expectedAuth ? "✓ YES" : "✗ NO");
+
+  if (!authHeader || authHeader !== expectedAuth) {
+    console.log("  → Auth FAILED - returning 401");
+    res.status(401).json({ error: "Unauthorized - Invalid secret key" });
+    return;
+  }
+  console.log("  → Auth SUCCESS");
+  next();
 };
 
 // Get all pending update requests (volunteer only)
-app.get('/api/volunteer/update-requests', verifyVolunteer, async (req, res) => {
-    try {
-        const status = req.query.status as string || 'pending';
-        const page = Math.max(1, parseInt(req.query.page as string) || 1);
-        const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string) || 20));
-        const skip = (page - 1) * limit;
+app.get("/api/volunteer/update-requests", verifyVolunteer, async (req, res) => {
+  try {
+    const status = (req.query.status as string) || "pending";
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(
+      50,
+      Math.max(1, parseInt(req.query.limit as string) || 20),
+    );
+    const skip = (page - 1) * limit;
 
-        const query = status === 'all' ? {} : { status };
-        
-        const requests = await UpdateRequest.find(query)
-            .sort({ submittedAt: -1 })
-            .skip(skip)
-            .limit(limit);
+    const query = status === "all" ? {} : { status };
 
-        const totalCount = await UpdateRequest.countDocuments(query);
-        const hasMore = skip + requests.length < totalCount;
+    const requests = await UpdateRequest.find(query)
+      .sort({ submittedAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-        res.json({
-            data: requests,
-            page,
-            limit,
-            totalCount,
-            hasMore
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
-    }
+    const totalCount = await UpdateRequest.countDocuments(query);
+    const hasMore = skip + requests.length < totalCount;
+
+    res.json({
+      data: requests,
+      page,
+      limit,
+      totalCount,
+      hasMore,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Approve update request (volunteer only)
-app.post('/api/volunteer/update-requests/:id/approve', verifyVolunteer, async (req, res) => {
+app.post(
+  "/api/volunteer/update-requests/:id/approve",
+  verifyVolunteer,
+  async (req, res) => {
     try {
-        const { id } = req.params;
-        const { notes } = req.body;
+      const { id } = req.params;
+      const { notes } = req.body;
 
-        const updateRequest = await UpdateRequest.findById(id);
-        if (!updateRequest) {
-            res.status(404).json({ error: 'Update request not found' });
-            return;
-        }
+      const updateRequest = await UpdateRequest.findById(id);
+      if (!updateRequest) {
+        res.status(404).json({ error: "Update request not found" });
+        return;
+      }
 
-        if (updateRequest.status !== 'pending') {
-            res.status(400).json({ error: 'Update request already processed' });
-            return;
-        }
+      if (updateRequest.status !== "pending") {
+        res.status(400).json({ error: "Update request already processed" });
+        return;
+      }
 
-        // Update the alumni record
-        const alumni = await Alumni.findOne({ rollNumber: updateRequest.rollNumber });
-        if (!alumni) {
-            res.status(404).json({ error: 'Alumni not found' });
-            return;
-        }
+      // Update the alumni record
+      const alumni = await Alumni.findOne({
+        rollNumber: updateRequest.rollNumber,
+      });
+      if (!alumni) {
+        res.status(404).json({ error: "Alumni not found" });
+        return;
+      }
 
-        // Apply the updates
-        Object.assign(alumni, updateRequest.newData);
-        await alumni.save();
+      // Apply the updates
+      Object.assign(alumni, updateRequest.newData);
+      await alumni.save();
 
-        // Update the request status
-        updateRequest.status = 'approved';
-        updateRequest.reviewedAt = new Date();
-        updateRequest.notes = notes;
-        await updateRequest.save();
+      // Update the request status
+      updateRequest.status = "approved";
+      updateRequest.reviewedAt = new Date();
+      updateRequest.notes = notes;
+      await updateRequest.save();
 
-        res.json({ 
-            success: true, 
-            message: 'Update request approved and applied',
-            alumni 
-        });
+      res.json({
+        success: true,
+        message: "Update request approved and applied",
+        alumni,
+      });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
     }
-});
+  },
+);
 
 // Reject update request (volunteer only)
-app.post('/api/volunteer/update-requests/:id/reject', verifyVolunteer, async (req, res) => {
+app.post(
+  "/api/volunteer/update-requests/:id/reject",
+  verifyVolunteer,
+  async (req, res) => {
     try {
-        const { id } = req.params;
-        const { notes } = req.body;
+      const { id } = req.params;
+      const { notes } = req.body;
 
-        const updateRequest = await UpdateRequest.findById(id);
-        if (!updateRequest) {
-            res.status(404).json({ error: 'Update request not found' });
-            return;
-        }
+      const updateRequest = await UpdateRequest.findById(id);
+      if (!updateRequest) {
+        res.status(404).json({ error: "Update request not found" });
+        return;
+      }
 
-        if (updateRequest.status !== 'pending') {
-            res.status(400).json({ error: 'Update request already processed' });
-            return;
-        }
+      if (updateRequest.status !== "pending") {
+        res.status(400).json({ error: "Update request already processed" });
+        return;
+      }
 
-        updateRequest.status = 'rejected';
-        updateRequest.reviewedAt = new Date();
-        updateRequest.notes = notes;
-        await updateRequest.save();
+      updateRequest.status = "rejected";
+      updateRequest.reviewedAt = new Date();
+      updateRequest.notes = notes;
+      await updateRequest.save();
 
-        res.json({ 
-            success: true, 
-            message: 'Update request rejected' 
-        });
+      res.json({
+        success: true,
+        message: "Update request rejected",
+      });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Server error' });
+      console.error(err);
+      res.status(500).json({ error: "Server error" });
     }
-});
+  },
+);
 
 // Start server only after MongoDB connection is established
 async function startServer() {
-    try {
-        // Connect to MongoDB first
-        await connectWithRetry();
-        
-        const PORT = parseInt(process.env.PORT || '3001');
-        const server = app.listen(PORT, '0.0.0.0', () => {
-            console.log(`Server running on port ${PORT}`);
-            console.log(`MongoDB connection state: ${mongoose.connection.readyState}`);
-        });
+  try {
+    // Connect to MongoDB first
+    await connectWithRetry();
 
-        server.on('error', (err) => {
-            console.error('Server error:', err);
-        });
+    const PORT = parseInt(process.env.PORT || "3001");
+    const server = app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(
+        `MongoDB connection state: ${mongoose.connection.readyState}`,
+      );
+    });
 
-        // Graceful shutdown
-        process.on('SIGTERM', async () => {
-            console.log('SIGTERM received, closing server gracefully...');
-            server.close(() => {
-                console.log('Server closed');
-            });
-            await mongoose.connection.close();
-            console.log('MongoDB connection closed');
-            process.exit(0);
-        });
+    server.on("error", (err) => {
+      console.error("Server error:", err);
+    });
 
-        process.on('SIGINT', async () => {
-            console.log('SIGINT received, closing server gracefully...');
-            server.close(() => {
-                console.log('Server closed');
-            });
-            await mongoose.connection.close();
-            console.log('MongoDB connection closed');
-            process.exit(0);
-        });
-    } catch (error) {
-        console.error('Failed to start server:', error);
-        process.exit(1);
-    }
+    // Graceful shutdown
+    process.on("SIGTERM", async () => {
+      console.log("SIGTERM received, closing server gracefully...");
+      server.close(() => {
+        console.log("Server closed");
+      });
+      await mongoose.connection.close();
+      console.log("MongoDB connection closed");
+      process.exit(0);
+    });
+
+    process.on("SIGINT", async () => {
+      console.log("SIGINT received, closing server gracefully...");
+      server.close(() => {
+        console.log("Server closed");
+      });
+      await mongoose.connection.close();
+      console.log("MongoDB connection closed");
+      process.exit(0);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 }
 
 // Start the server
