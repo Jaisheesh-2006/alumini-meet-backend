@@ -76,6 +76,7 @@ if (fs.existsSync(meetAppDist)) {
 
 // Define Mongoose schema for Alumni
 const alumniSchema = new mongoose.Schema({
+  serialNo: String,
   name: { type: String, required: true, index: true },
   rollNumber: { type: String, required: true, unique: true, index: true },
   gender: String,
@@ -86,6 +87,7 @@ const alumniSchema = new mongoose.Schema({
   department: String,
   currentLocationIndia: String,
   currentOverseasLocation: String,
+  country: String,
   lastPosition: String,
   lastOrganization: String,
   natureOfJob: String,
@@ -99,6 +101,7 @@ const alumniSchema = new mongoose.Schema({
   higherStudies: String,
   startup: String,
   achievements: String,
+  collegeClubs: String,
   photoLink: String,
 });
 
@@ -202,14 +205,50 @@ function escapeRegex(input: string): string {
   return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function buildCaseInsensitiveExactRegex(input: string): {
+  $regex: string;
+  $options: string;
+} {
+  const escaped = escapeRegex(input.trim());
+  return {
+    $regex: `^\\s*${escaped}\\s*$`,
+    $options: "i",
+  };
+}
+
+const PROGRAM_SORT_ORDER = [
+  "PGDMIT",
+  "PGDIT",
+  "IPG",
+  "IMT",
+  "IMG",
+  "BCS",
+  "BIT",
+  "MBA",
+  "MTECH",
+  "PHD",
+  "DSC",
+];
+
 // search endpoint -->
 app.get("/api/search", async (req, res) => {
   const name = typeof req.query.name === "string" ? req.query.name.trim() : "";
   const rollNumber =
     typeof req.query.rollNumber === "string" ? req.query.rollNumber.trim() : "";
-  // Add new filters
-  const company =
-    typeof req.query.company === "string" ? req.query.company.trim() : "";
+  const lastOrganization =
+    typeof req.query.lastOrganization === "string"
+      ? req.query.lastOrganization.trim()
+      : typeof req.query.company === "string"
+        ? req.query.company.trim()
+        : "";
+  const lastPosition =
+    typeof req.query.lastPosition === "string"
+      ? req.query.lastPosition.trim()
+      : "";
+  const collegeClubs =
+    typeof req.query.collegeClubs === "string"
+      ? req.query.collegeClubs.trim()
+      : "";
   const natureOfJob =
     typeof req.query.natureOfJob === "string"
       ? req.query.natureOfJob.trim()
@@ -239,36 +278,18 @@ app.get("/api/search", async (req, res) => {
   try {
     const andConditions: any[] = [];
 
-    // Handle partial matches for name and roll number
-    if (name || rollNumber) {
-      const searchConditions: any[] = [];
-
-      if (name) {
-        const sanitizedName = escapeRegex(sanitizeInput(name));
-        searchConditions.push({
-          name: {
-            $regex: sanitizedName,
-            $options: "i",
-          },
-        });
-      }
-
-      if (rollNumber) {
-        const sanitizedRoll = escapeRegex(sanitizeInput(rollNumber));
-        searchConditions.push({
-          rollNumber: {
-            $regex: sanitizedRoll,
-            $options: "i",
-          },
-        });
-      }
-
-      andConditions.push(...searchConditions);
+    if (name) {
+      const sanitizedName = escapeRegex(sanitizeInput(name));
+      andConditions.push({
+        name: {
+          $regex: sanitizedName,
+          $options: "i",
+        },
+      });
     }
 
-    // Fuzzy company search
-    if (company) {
-      const sanitizedCompany = escapeRegex(sanitizeInput(company));
+    if (lastOrganization) {
+      const sanitizedCompany = escapeRegex(sanitizeInput(lastOrganization));
       andConditions.push({
         lastOrganization: {
           $regex: sanitizedCompany,
@@ -277,33 +298,41 @@ app.get("/api/search", async (req, res) => {
       });
     }
 
-    if (natureOfJob) {
-      const sanitizedNature = escapeRegex(sanitizeInput(natureOfJob));
+    if (lastPosition) {
+      const sanitizedLastPosition = escapeRegex(sanitizeInput(lastPosition));
       andConditions.push({
-        natureOfJob: {
-          $regex: `^${sanitizedNature}$`,
+        lastPosition: {
+          $regex: sanitizedLastPosition,
           $options: "i",
         },
       });
     }
 
-    if (country) {
-      const sanitizedCountry = escapeRegex(sanitizeInput(country));
+    if (collegeClubs) {
+      const sanitizedCollegeClubs = escapeRegex(sanitizeInput(collegeClubs));
       andConditions.push({
-        $or: [
-          {
-            currentLocationIndia: {
-              $regex: sanitizedCountry,
-              $options: "i",
-            },
-          },
-          {
-            currentOverseasLocation: {
-              $regex: sanitizedCountry,
-              $options: "i",
-            },
-          },
-        ],
+        collegeClubs: {
+          $regex: sanitizedCollegeClubs,
+          $options: "i",
+        },
+      });
+    }
+
+    if (rollNumber) {
+      andConditions.push({
+        rollNumber: buildCaseInsensitiveExactRegex(rollNumber),
+      });
+    }
+
+    if (natureOfJob) {
+      andConditions.push({
+        natureOfJob: buildCaseInsensitiveExactRegex(natureOfJob),
+      });
+    }
+
+    if (country) {
+      andConditions.push({
+        country: buildCaseInsensitiveExactRegex(country),
       });
     }
 
@@ -313,13 +342,14 @@ app.get("/api/search", async (req, res) => {
         $or: [
           {
             currentLocationIndia: {
-              $regex: sanitizedCity,
+              // The \\b ensures it matches whole words, not partial words
+              $regex: `\\b${sanitizedCity}`,
               $options: "i",
             },
           },
           {
             currentOverseasLocation: {
-              $regex: sanitizedCity,
+              $regex: `\\b${sanitizedCity}`,
               $options: "i",
             },
           },
@@ -335,24 +365,14 @@ app.get("/api/search", async (req, res) => {
     }
 
     if (programName) {
-      const sanitizedProgramName = escapeRegex(sanitizeInput(programName));
       andConditions.push({
-        programName: {
-          $regex: `^${sanitizedProgramName}$`,
-          $options: "i",
-        },
+        programName: buildCaseInsensitiveExactRegex(programName),
       });
     }
 
     if (specialization) {
-      const sanitizedSpecialization = escapeRegex(
-        sanitizeInput(specialization),
-      );
       andConditions.push({
-        specialization: {
-          $regex: `^${sanitizedSpecialization}$`,
-          $options: "i",
-        },
+        specialization: buildCaseInsensitiveExactRegex(specialization),
       });
     }
 
@@ -370,6 +390,7 @@ app.get("/api/search", async (req, res) => {
 
     // Project only needed fields to reduce payload size
     const projection: any = {
+      serialNo: 1,
       name: 1,
       rollNumber: 1,
       department: 1,
@@ -377,23 +398,55 @@ app.get("/api/search", async (req, res) => {
       yearOfGraduation: 1,
       programName: 1,
       specialization: 1,
+      country: 1,
+      lastPosition: 1,
+      natureOfJob: 1,
+      collegeClubs: 1,
       lastOrganization: 1,
       currentLocationIndia: 1,
       currentOverseasLocation: 1,
     };
 
-    // Execute query with pagination and sorted by oldest year of entry first
-    const results = await Alumni.find(query)
-      .select(projection)
-      .sort({ yearOfEntry: 1, name: 1 })
-      .skip(skip)
-      .limit(limit);
+    const programSortBranches = PROGRAM_SORT_ORDER.map((program, index) => ({
+      case: {
+        $eq: [{ $toUpper: { $ifNull: ["$programName", ""] } }, program],
+      },
+      then: index + 1,
+    }));
+
+    // Execute query with pagination sorted by custom program order, then serialNo ascending
+    const results = await Alumni.aggregate([
+      { $match: query },
+      {
+        $addFields: {
+          programSortOrder: {
+            $switch: {
+              branches: programSortBranches,
+              default: PROGRAM_SORT_ORDER.length + 1,
+            },
+          },
+          serialNoNumeric: {
+            $convert: {
+              input: "$serialNo",
+              to: "int",
+              onError: Number.MAX_SAFE_INTEGER,
+              onNull: Number.MAX_SAFE_INTEGER,
+            },
+          },
+          serialNoString: { $ifNull: ["$serialNo", ""] },
+        },
+      },
+      { $sort: { programSortOrder: 1, serialNoNumeric: 1, serialNoString: 1 } },
+      { $project: projection },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
 
     // Get total count for pagination metadata
     const totalCount = await Alumni.countDocuments(query);
     const hasMore = skip + results.length < totalCount;
 
-    const cleanedResults = results.map((doc) => doc.toObject());
+    const cleanedResults = results;
 
     res.json({
       count: cleanedResults.length,
