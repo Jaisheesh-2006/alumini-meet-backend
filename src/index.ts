@@ -392,6 +392,7 @@ app.get("/api/search", async (req, res) => {
     const projection: any = {
       serialNo: 1,
       name: 1,
+      linkedIn: 1,
       rollNumber: 1,
       department: 1,
       yearOfEntry: 1,
